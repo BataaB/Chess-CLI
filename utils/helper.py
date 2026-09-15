@@ -1,6 +1,7 @@
 import subprocess
 import platform
 import chess
+import os
 
 def clear_screen():
     subprocess.run("cls" if platform.system() == "Windows" else "clear", shell=True)
@@ -90,3 +91,10 @@ def render_board(board, side):
         for i, row in enumerate(rows):
             print(f"{row} {ranks[i]}")
     print()
+
+
+def ensure_directory(path: str):
+    """Ensure the directory for a file path exists."""
+    directory = os.path.dirname(path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory)

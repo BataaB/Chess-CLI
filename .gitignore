@@ -2,3 +2,4 @@ venv/
 engine/**/*.exe
 **/test*
 **/__pycache__/
+data/

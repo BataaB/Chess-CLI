@@ -1,13 +1,15 @@
 import cmd
 import chess
+import chess.pgn
 from engine.engine_handler import StockfishHandler
 from typing import Optional
 import random
 import time
 
-from utils.helper import print_move_history, render_board
+from utils.helper import ensure_directory, print_move_history, render_board
 
 SLEEP = 2
+PGN_PATH = "data/game.pgn"
 
 class PlayEngineShell(cmd.Cmd):
     intro = "placeholer" # I'll have to think of something for this or just leave it blank
@@ -19,6 +21,7 @@ class PlayEngineShell(cmd.Cmd):
         self.engine: Optional[StockfishHandler] = None
         self.board : Optional[chess.Board] = None
 
+        self.needs_save : bool = False
         self.user_is_white: bool = False
         self.game_active: bool = False
         self.skill_level: int = 10
@@ -36,6 +39,7 @@ class PlayEngineShell(cmd.Cmd):
         engine_move_san = self.board.san(engine_move)
         self.board.push(engine_move)
         self.move_history.append(engine_move_san)
+        self.needs_save = True
 
         self.onecmd("clear")
         print(f"Engine plays: {engine_move_san}")
@@ -43,11 +47,17 @@ class PlayEngineShell(cmd.Cmd):
 
     def _end_game(self):
 
+        if self.needs_save and self.move_history:
+            choice = input("Would you like to save the game to a pgn (y/N)? ")
+            if choice.lower() == "y":
+                self.onecmd("save")
+
         if self.engine is not None:
             self.engine.stop()
+        
         self.engine = None
         self.board = None
-
+        self.needs_save = False
         self.game_active = False
         self.move_history = []
 
@@ -122,6 +132,7 @@ class PlayEngineShell(cmd.Cmd):
         san = self.board.san(move)
         self.board.push(move)
         self.move_history.append(san)
+        self.needs_save = True
 
         self.onecmd("clear")
         print(f"You played: {san}")
@@ -152,7 +163,6 @@ class PlayEngineShell(cmd.Cmd):
         render_board(self.board, self.user_is_white)
 
     def do_resign(self, arg):
-        # TODO: Allow the user to resign. Ask for confirmation.
         if (arg.strip().lower() != "f"):
             choice = input("Resign (y/N)? ")
             if choice.lower() != "y":
@@ -161,8 +171,32 @@ class PlayEngineShell(cmd.Cmd):
         self._end_game()
 
     def do_save(self, arg):
-        # TODO: Save the game as a pgn to a file. This can be implemented later.
-        pass
+        """Save the current game to a pgn. (data/game.pgn)"""
+        if not self.game_active and not self.move_history:
+            print("No game to save.")
+            return
+
+        game = chess.pgn.Game()
+        game.headers["Even"] = "Chess CLI Game"
+        game.headers["White"] = "User" if self.user_is_white else "Engine"
+        game.headers["Black"] = "Engine" if self.user_is_white else "User"
+
+        node = game
+
+        temp_board = chess.Board()
+        for san in self.move_history:
+            move = temp_board.parse_san(san)
+            node = node.add_variation(move)
+            temp_board.push(move)
+
+        try:
+            ensure_directory(PGN_PATH)
+            with open(PGN_PATH, "w", encoding="utf-8") as f:
+                print(game, file=f)
+            print(f"Game saved to {PGN_PATH}")
+            self.needs_save = False
+        except Exception as e:
+            print(f"Failed to save game: {e}")
 
     def do_difficulty(self, arg):
         """Set difficulty (1-20) or show difficulty by passing no argument."""
