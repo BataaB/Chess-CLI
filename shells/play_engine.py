@@ -1,4 +1,5 @@
 import cmd
+from datetime import datetime
 import chess
 import chess.pgn
 from engine.engine_handler import StockfishHandler
@@ -21,6 +22,7 @@ class PlayEngineShell(cmd.Cmd):
         self.engine: Optional[StockfishHandler] = None
         self.board : Optional[chess.Board] = None
 
+        self.game_result : Optional[str] = None
         self.needs_save : bool = False
         self.user_is_white: bool = False
         self.game_active: bool = False
@@ -168,6 +170,8 @@ class PlayEngineShell(cmd.Cmd):
             if choice.lower() != "y":
                 return
 
+        self.game_result = "0-1" if self.user_is_white else "1-0"
+        print("You resigned.")
         self._end_game()
 
     def do_save(self, arg):
@@ -177,9 +181,15 @@ class PlayEngineShell(cmd.Cmd):
             return
 
         game = chess.pgn.Game()
-        game.headers["Even"] = "Chess CLI Game"
+        game.headers["Event"] = "Chess CLI Game"
         game.headers["White"] = "User" if self.user_is_white else "Engine"
         game.headers["Black"] = "Engine" if self.user_is_white else "User"
+        game.headers["Date"] = datetime.now().strftime("%Y.%m.%d")
+        if self.game_result is not None:
+            game.headers["Result"] = self.game_result
+            game.headers["Termination"] = "resignation"
+        else:
+            game.headers["Result"] = self.board.result() if self.board.is_game_over() else "*"
 
         node = game
 
@@ -191,7 +201,8 @@ class PlayEngineShell(cmd.Cmd):
 
         try:
             ensure_directory(PGN_PATH)
-            with open(PGN_PATH, "w", encoding="utf-8") as f:
+            with open(PGN_PATH, "a", encoding="utf-8") as f:
+                f.write("\n\n")
                 print(game, file=f)
             print(f"Game saved to {PGN_PATH}")
             self.needs_save = False
