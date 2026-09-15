@@ -51,6 +51,15 @@ class PlayEngineShell(cmd.Cmd):
         self.game_active = False
         self.move_history = []
 
+    def _result_message(self, result: str, user_is_white: bool) -> str:
+        """PGN Style result to a message."""
+        if result == "1-0":
+            return "You win!" if user_is_white else "You lose."
+        elif result == "0-1":
+            return "You lose." if user_is_white else "You win!"
+        else:
+            return "Draw."
+
     def preloop(self):
         self.onecmd("clear")
 
@@ -94,8 +103,45 @@ class PlayEngineShell(cmd.Cmd):
             self._engine_move()
 
     def do_move(self, arg):
-        # TODO: This should allow the user to make a move.
-        pass
+        """Make a move using SAN notation."""
+        if not self.game_active:
+            print("No active game. Start a game with: start [white|black]")
+            return
+
+        move_san = arg.strip()
+        if move_san == "":
+            print("Please enter a move.")
+            return
+
+        try:
+            move = self.board.parse_san(move_san)
+        except ValueError:
+            print(f"Illegal move: {move_san}")
+            return
+
+        san = self.board.san(move)
+        self.board.push(move)
+        self.move_history.append(san)
+
+        self.onecmd("clear")
+        print(f"You played: {san}")
+        self.onecmd("board")
+
+        if self.board.is_game_over():
+            result = self.board.result()
+            print("Game over:", result)
+            print(self._result_message(result, self.user_is_white))
+            self._end_game()
+            return
+
+        self._engine_move()
+
+        if self.board.is_game_over():
+            result = self.board.result()
+            print("Game over:", result)
+            print(self._result_message(result, self.user_is_white))
+            self._end_game()
+            return
 
     def do_moves(self, arg):
         """Print move history."""
@@ -107,15 +153,34 @@ class PlayEngineShell(cmd.Cmd):
 
     def do_resign(self, arg):
         # TODO: Allow the user to resign. Ask for confirmation.
-        pass
+        if (arg.strip().lower() != "f"):
+            choice = input("Resign (y/N)? ")
+            if choice.lower() != "y":
+                return
+
+        self._end_game()
 
     def do_save(self, arg):
         # TODO: Save the game as a pgn to a file. This can be implemented later.
         pass
 
     def do_difficulty(self, arg):
-        # TODO: Adjust the difficulty of the engine.
-        pass
+        """Set difficulty (1-20) or show difficulty by passing no argument."""
+        diff = arg.strip().lower()
+        if diff == "":
+            print(f"Difficulty: {self.skill_level}")
+            return
+
+        try:
+            diff = int(diff)
+            if (1 > diff or diff > 20):
+                print("Difficulty should be an integer from 1 to 20.")
+                return
+            self.skill_level = diff
+            print(f"Difficulty set to: {diff}")
+        except ValueError:
+            print("Invalid difficulty setting.")
+            return
 
     def do_clear(self, arg):
         """Clear the screen."""
