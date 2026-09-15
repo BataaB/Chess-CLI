@@ -1,5 +1,6 @@
 import cmd
 from datetime import datetime
+import os
 import chess
 import chess.pgn
 from engine.engine_handler import StockfishHandler
@@ -11,6 +12,7 @@ from utils.helper import ensure_directory, print_move_history, render_board
 
 SLEEP = 2
 PGN_PATH = "data/game.pgn"
+ENGINE_DEPTH = 12
 
 class PlayEngineShell(cmd.Cmd):
     intro = "placeholer" # I'll have to think of something for this or just leave it blank
@@ -27,10 +29,10 @@ class PlayEngineShell(cmd.Cmd):
         self.user_is_white: bool = False
         self.game_active: bool = False
         self.skill_level: int = 10
-        self.move_history: list[chess.Move] = []
+        self.move_history: list[str] = []
 
     def _engine_move(self):
-        engine_move, _ = self.engine.get_engine_move(self.board, depth=12)
+        engine_move, _ = self.engine.get_engine_move(self.board, depth=ENGINE_DEPTH)
         if engine_move is None:
             print("Engine failed to produce a move.")
             self.game_active = False
@@ -45,7 +47,8 @@ class PlayEngineShell(cmd.Cmd):
 
         self.onecmd("clear")
         print(f"Engine plays: {engine_move_san}")
-        self.onecmd("board")
+        render_board(self.board, self.user_is_white)
+
 
     def _end_game(self):
 
@@ -59,16 +62,17 @@ class PlayEngineShell(cmd.Cmd):
         
         self.engine = None
         self.board = None
+        self.game_result = None
         self.needs_save = False
         self.game_active = False
         self.move_history = []
 
-    def _result_message(self, result: str, user_is_white: bool) -> str:
+    def _result_message(self, result: str) -> str:
         """PGN Style result to a message."""
         if result == "1-0":
-            return "You win!" if user_is_white else "You lose."
+            return "You win!" if self.user_is_white else "You lose."
         elif result == "0-1":
-            return "You lose." if user_is_white else "You win!"
+            return "You lose." if self.user_is_white else "You win!"
         else:
             return "Draw."
 
@@ -76,7 +80,8 @@ class PlayEngineShell(cmd.Cmd):
         self.onecmd("clear")
 
     def postloop(self):
-        self._end_game()
+        if self.game_active:
+            self._end_game()
         return super().postloop()
 
     def do_start(self, arg):
@@ -92,7 +97,7 @@ class PlayEngineShell(cmd.Cmd):
             self.user_is_white = False
         elif side == "":
             self.user_is_white = bool(random.getrandbits(1))
-            print(f"No side specified. You have been assigned: {"white" if self.user_is_white else "black"}")
+            print(f"No side specified. You have been assigned: {'white' if self.user_is_white else 'black'}")
         else:
             print("Invalid side. Choose 'white' or 'black'.")
             return
@@ -106,10 +111,12 @@ class PlayEngineShell(cmd.Cmd):
         self.board = chess.Board()
         self.move_history = []
         self.game_active = True
+        self.game_result = None
 
         input("Press Enter to continue..")
         self.onecmd("clear")
-        self.onecmd("board")
+        render_board(self.board, self.user_is_white)
+
 
         if not self.user_is_white:
             self._engine_move()
@@ -138,7 +145,8 @@ class PlayEngineShell(cmd.Cmd):
 
         self.onecmd("clear")
         print(f"You played: {san}")
-        self.onecmd("board")
+        render_board(self.board, self.user_is_white)
+
 
         if self.board.is_game_over():
             result = self.board.result()
@@ -171,6 +179,7 @@ class PlayEngineShell(cmd.Cmd):
                 return
 
         self.game_result = "0-1" if self.user_is_white else "1-0"
+        self.needs_save = True
         print("You resigned.")
         self._end_game()
 
@@ -201,8 +210,10 @@ class PlayEngineShell(cmd.Cmd):
 
         try:
             ensure_directory(PGN_PATH)
+            file_exists = os.path.exists(PGN_PATH)
             with open(PGN_PATH, "a", encoding="utf-8") as f:
-                f.write("\n\n")
+                if file_exists:
+                    f.write("\n\n")
                 print(game, file=f)
             print(f"Game saved to {PGN_PATH}")
             self.needs_save = False
