@@ -1,10 +1,12 @@
+import subprocess
+
 import chess
 import chess.engine
 from typing import Optional
 
 
 class StockfishHandler:
-    def __init__(self, engine_path: Optional[str] = "engine/stockfish.exe"):
+    def __init__(self, engine_path: Optional[str] = "engine/stockfish/stockfish.exe"):
         self.engine_path = engine_path
         self.engine : Optional[chess.engine.SimpleEngine] = None
 
@@ -75,3 +77,41 @@ class StockfishHandler:
             self.engine.quit()
             self.engine = None
             print("Engine terminated.")
+
+class Lc0Handler():
+    def __init__(self,
+                 engine_path: str = "engine/maia/lc0.exe",
+                 weights_path: str = "engine/maia/weights/maia-1100.pb"):
+        self.engine_path = engine_path
+        self.weights_path = weights_path
+        self.process: Optional[chess.engine.SimpleEngine] = None
+
+    def start(self) -> bool:
+        try:
+            self.process = chess.engine.SimpleEngine.popen_uci(self.engine_path, stderr=subprocess.DEVNULL)
+            self.process.configure({"WeightsFile": self.weights_path})
+            return True
+        except Exception as e:
+            print(f"Failed to start Lc0: {e}")
+            self.process = None
+            return False
+
+    def stop(self) -> None:
+        if self.process is not None:
+            try:
+                self.process.quit()
+            except Exception:
+                pass
+            self.process = None
+
+    def get_engine_move(self, board: chess.Board, depth: int = 1) -> tuple[Optional[chess.Move], Optional[float]]:
+        if self.process is None:
+            return None, None
+
+        try:
+            limit = chess.engine.Limit(nodes=1)
+            info = self.process.play(board, limit)
+            return info.move, None
+        except Exception as e:
+            print(f"Lc0 failed to produce a move: {e}")
+            return None, None

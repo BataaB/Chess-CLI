@@ -22,6 +22,7 @@ class PlayEngineShell(cmd.Cmd):
 
         self.engine: Optional[StockfishHandler] = None
         self.board : Optional[chess.Board] = None
+        self.engine_type: str = "maia"
 
         self.game_result : Optional[str] = None
         self.needs_save : bool = False
@@ -83,6 +84,19 @@ class PlayEngineShell(cmd.Cmd):
             self._end_game()
         return super().postloop()
 
+    def do_engine(self, arg):
+        choice = arg.strip().lower()
+        if choice in ("stockfish", "sf", "s"):
+            self.engine_type = "stockfish"
+            print("Engine set to Stockfish.")
+        elif choice in ("maia", "lc0", "m"):
+            self.engine_type = "maia"
+            print("Engine set to Maia (Lc0).")
+        elif choice == "":
+            print("Engine:", self.engine_type)
+        else:
+            print("Unknown engine. Use 'stockfish' or 'maia'.")
+
     def do_start(self, arg):
         if self.game_active:
             print("There is already an active game.")
@@ -100,13 +114,22 @@ class PlayEngineShell(cmd.Cmd):
         else:
             print("Invalid side. Choose 'white' or 'black'.")
             return
-        
-        self.engine = StockfishHandler()
-        if not self.engine.start(self.skill_level):
-            print("Failed to start engine.")
-            self.engine = None
-            return
-        
+
+        if self.engine_type == "stockfish":
+            self.engine = StockfishHandler()
+            if not self.engine.start(self.skill_level):
+                print("Failed to start engine.")
+                self.engine = None
+                return
+        else:
+            from engine.engine_handler import Lc0Handler
+            self.engine = Lc0Handler()
+            if not self.engine.start():
+                print("Failed to start Maia (Lc0).")
+                self.engine = None
+                return
+
+            
         self.board = chess.Board()
         self.move_history = []
         self.game_active = True
