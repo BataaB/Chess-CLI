@@ -12,6 +12,8 @@ from utils.helper import ensure_directory, print_move_history, render_board
 SLEEP = 2
 PGN_PATH = "data/game.pgn"
 ENGINE_DEPTH = 12
+DEFAULT_ENGINE = "stockfish"
+DEFAULT_SKILL_LEVEL = 10
 
 class PlayEngineShell(cmd.Cmd):
     intro = "placeholer" # I'll have to think of something for this or just leave it blank
@@ -22,17 +24,18 @@ class PlayEngineShell(cmd.Cmd):
 
         self.engine: Optional[StockfishHandler] = None
         self.board : Optional[chess.Board] = None
-        self.engine_type: str = "maia"
+        self.engine_type: str = DEFAULT_ENGINE
 
         self.game_result : Optional[str] = None
         self.needs_save : bool = False
         self.user_is_white: bool = False
         self.game_active: bool = False
-        self.skill_level: int = 10
+        self.skill_level: int = DEFAULT_SKILL_LEVEL
         self.move_history: list[str] = []
 
     def _engine_move(self):
-        engine_move, _ = self.engine.get_engine_move(self.board, depth=ENGINE_DEPTH)
+        engine_move = self.engine.get_engine_move(self.board, depth=ENGINE_DEPTH)
+        
         if engine_move is None:
             print("Engine failed to produce a move.")
             self.game_active = False

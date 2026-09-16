@@ -1,8 +1,12 @@
+import random
 import subprocess
 
 import chess
 import chess.engine
 from typing import Optional
+
+WEIGHT_SHIFT = 10
+OPTION_SIZE = 4
 
 
 class StockfishHandler:
@@ -25,7 +29,7 @@ class StockfishHandler:
             self,
             board: chess.Board,
             depth: Optional[int] = None,
-            multipv: int = 1,
+            multipv: int = OPTION_SIZE,
             limit_time: Optional[float] = None
         ) -> Optional[chess.Move]:
 
@@ -42,13 +46,21 @@ class StockfishHandler:
         info = self.engine.analyse(board, limit, multipv=multipv)
 
         pv_lines = []
+        weights = []
         for entry in info:
-            pv = entry.get("pv", [])
-            pv_lines.append(pv)
+            pov_score = entry.get("score")
+            pvLines = entry.get("pv", [])
+            if pvLines and pvLines[0]:
+                weights.append(pov_score.pov("black").score())
+                pv_lines.append(pvLines[0])
+        max_weight = max(weights)
+        for i in range(len(weights)):
+            weights[i] -= max_weight + WEIGHT_SHIFT
+            weights[i] *= -1
 
-        best_move = pv_lines[0][0] if pv_lines and pv_lines[0] else None
+        best_move = random.choices(pv_lines, weights=weights)[0]
 
-        return best_move, pv_lines
+        return best_move
 
 
     def get_evaluation(
