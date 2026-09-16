@@ -1,6 +1,5 @@
 import cmd
 from datetime import datetime
-import os
 import chess
 import chess.pgn
 from engine.engine_handler import StockfishHandler
@@ -112,6 +111,7 @@ class PlayEngineShell(cmd.Cmd):
         self.move_history = []
         self.game_active = True
         self.game_result = None
+        self.needs_save = True
 
         input("Press Enter to continue..")
         self.onecmd("clear")
@@ -151,7 +151,7 @@ class PlayEngineShell(cmd.Cmd):
         if self.board.is_game_over():
             result = self.board.result()
             print("Game over:", result)
-            print(self._result_message(result, self.user_is_white))
+            print(self._result_message(result))
             self._end_game()
             return
 
@@ -160,7 +160,7 @@ class PlayEngineShell(cmd.Cmd):
         if self.board.is_game_over():
             result = self.board.result()
             print("Game over:", result)
-            print(self._result_message(result, self.user_is_white))
+            print(self._result_message(result))
             self._end_game()
             return
 
@@ -210,10 +210,7 @@ class PlayEngineShell(cmd.Cmd):
 
         try:
             ensure_directory(PGN_PATH)
-            file_exists = os.path.exists(PGN_PATH)
-            with open(PGN_PATH, "a", encoding="utf-8") as f:
-                if file_exists:
-                    f.write("\n\n")
+            with open(PGN_PATH, "w", encoding="utf-8") as f:
                 print(game, file=f)
             print(f"Game saved to {PGN_PATH}")
             self.needs_save = False
