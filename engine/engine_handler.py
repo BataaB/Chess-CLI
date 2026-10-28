@@ -51,8 +51,10 @@ class StockfishHandler:
             pov_score = entry.get("score")
             pvLines = entry.get("pv", [])
             if pvLines and pvLines[0]:
-                weights.append(pov_score.pov("black").score())
-                pv_lines.append(pvLines[0])
+                score = pov_score.pov("black").score()
+                if score is not None:
+                    weights.append(score)
+                    pv_lines.append(pvLines[0])
         max_weight = max(weights)
         for i in range(len(weights)):
             weights[i] -= max_weight + WEIGHT_SHIFT
