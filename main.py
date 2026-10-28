@@ -4,6 +4,10 @@ class ChessCLI(cmd.Cmd):
     intro = "Welcome to Chess CLI! Type help or ? to list commands."
     prompt = "chess> "
 
+    def do_play_engine(self, arg):
+        from shells.play_engine import PlayEngineShell
+        PlayEngineShell().cmdloop()
+
     def do_clear(self, arg):
         """Clear the screen."""
         import os
